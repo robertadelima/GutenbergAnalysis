@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace BooksAnalysis
 {
@@ -9,18 +12,39 @@ namespace BooksAnalysis
     {
         public static void Main(string[] args)
         {
-            ReadAllFiles();
-        }
-
-        public static void ReadAllFiles()
-        {
+            var fileNumber = 0;
+            ConcurrentDictionary<string, int> wordDictionary = new ConcurrentDictionary<string, int>();
+            var threadsNum = 8;
             var folderPath = Path.GetDirectoryName(Path.GetDirectoryName(System.IO.Directory.GetCurrentDirectory()));
             var fullPath = folderPath + @"\10k-livros";
+            
+            var numFilesInPath = Directory.GetFiles(fullPath).Length;
+            var Files = Directory.EnumerateFiles(fullPath, "*.txt").ToList();
+            
+            //100
+            var totalFiles = Files.GetRange(1, 100);
+            numFilesInPath = 100;
+
+            List<int> intervalos = new List<int>();
+            
+            for(int i = 0; i < numFilesInPath; i += (numFilesInPath/threadsNum))
+                intervalos.Add(i);
+            
+            for (int i = 0; i < intervalos.Count-1; i++)
+            { 
+                // var partialFilesList = totalFiles.GetRange(intervalos[i], (numFilesInPath/threadsNum));
+                var partialFilesList = totalFiles.GetRange(intervalos[i], (numFilesInPath/threadsNum));
+                new Thread(() => ReadAllFiles(partialFilesList, wordDictionary, fileNumber)).Start();    
+            }
+            
+        }
+
+        public static void ReadAllFiles(List<string> files, ConcurrentDictionary<string, int> wordDictionary, int fileNumber)
+        {
+            Regex rgx = new Regex("[^a-zA-Z0-9 -]");
             var contents = "";
             string[] words;
-            var numberOfFilesRead = 0;
-            Dictionary<string, int> wordDictionary = new Dictionary<string, int>();
-            foreach (var file in Directory.EnumerateFiles(fullPath, "*.txt"))
+            foreach (var file in files)
             {
                 contents = File.ReadAllText(file);
                 words = contents.Split();
@@ -28,39 +52,15 @@ namespace BooksAnalysis
                 {
                     if (word == "" || word == " ")
                         continue;
-                    try
-                    {
-                        wordDictionary.Add(formatWord(word), 0);
-                    }
-                    catch (ArgumentException)
-                    {
-                        wordDictionary[formatWord(word)] = wordDictionary[formatWord(word)] + 1;
-                    }
-                }
-
-                numberOfFilesRead++;
-                Console.Write("Arquivos lidos: ");
-                Console.WriteLine(numberOfFilesRead);
-                Console.Write("Total de palavras: ");
-                Console.WriteLine(wordDictionary.Count);
-                
-                var list = wordDictionary.Keys.ToList();
-                var sortedDict = from entry in wordDictionary orderby entry.Value ascending select entry;
-                var sortedKeys = sortedDict.Select(p => p.Key);
-                
-                for(int i = 0; i < 10; i++)
-                {
-                    Console.WriteLine("{0}: {1}", list[i], wordDictionary[list[i]]);
+                    
+                    wordDictionary.AddOrUpdate(rgx.Replace(word, ""), 0, 
+                        (key, oldValue) => oldValue + 1);
                 }
             }
+
+            Console.WriteLine(wordDictionary.Count());
+            
         }
 
-        public static string formatWord(string pWord)
-        {
-            return pWord.ToLower().Replace(".", "").Replace(",", "")
-                .Replace("!", "").Replace("?", "").Replace(":", "")
-                .Replace(";", "").Replace("\"", "").Trim();
-        }
-        
     }
 }

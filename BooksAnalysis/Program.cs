@@ -1,10 +1,13 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BooksAnalysis
 {
@@ -12,55 +15,70 @@ namespace BooksAnalysis
     {
         public static void Main(string[] args)
         {
-            var fileNumber = 0;
-            ConcurrentDictionary<string, int> wordDictionary = new ConcurrentDictionary<string, int>();
+            var wordDictionary = new ConcurrentDictionary<string, long>();
+            var orderedDictionary = new Dictionary<string, long>();
             var threadsNum = 8;
             var folderPath = Path.GetDirectoryName(Path.GetDirectoryName(System.IO.Directory.GetCurrentDirectory()));
             var fullPath = folderPath + @"\10k-livros";
             
             var numFilesInPath = Directory.GetFiles(fullPath).Length;
-            var Files = Directory.EnumerateFiles(fullPath, "*.txt").ToList();
-            
+            var files = Directory.EnumerateFiles(fullPath, "*.txt").ToList();
+            var tasks = new List<Task>();
+            List<Thread> threads = new List<Thread>();
+
+
             //100
-            var totalFiles = Files.GetRange(1, 100);
-            numFilesInPath = 100;
+            var totalFiles = files.GetRange(1, 40);
+            numFilesInPath = totalFiles.Count();
 
             List<int> intervalos = new List<int>();
             
             for(int i = 0; i < numFilesInPath; i += (numFilesInPath/threadsNum))
                 intervalos.Add(i);
             
-            for (int i = 0; i < intervalos.Count-1; i++)
-            { 
-                // var partialFilesList = totalFiles.GetRange(intervalos[i], (numFilesInPath/threadsNum));
-                var partialFilesList = totalFiles.GetRange(intervalos[i], (numFilesInPath/threadsNum));
-                new Thread(() => ReadAllFiles(partialFilesList, wordDictionary, fileNumber)).Start();    
+            for (var i = 0; i < threadsNum-1; i++)
+            {
+                var partialFilesList = files.GetRange(intervalos[i], (numFilesInPath/threadsNum)-1);
+                new Thread(() => ReadAllFiles(partialFilesList, wordDictionary)).Start(); 
             }
+            
+            // foreach(Thread thread in threads)
+            // {
+            //     thread.Start();
+            //     thread.Join();
+            // }
+            
+            // while (tasks.Any(t => !t.IsCompleted))
+            // {
+            //     orderedDictionary = wordDictionary.OrderByDescending(pair => pair.Value)
+            //         .ToDictionary(pair => pair.Key, pair => pair.Value);
+            //     var filePath = fullPath + @"\word-analyses.txt";
+            //     var ordered = orderedDictionary.ToList().ToString();
+            //     File.WriteAllText(filePath, ordered);
+            // }
             
         }
 
-        public static void ReadAllFiles(List<string> files, ConcurrentDictionary<string, int> wordDictionary, int fileNumber)
+        public static void ReadAllFiles(List<string> files, ConcurrentDictionary<string, Int64> wordDictionary)
         {
             Regex rgx = new Regex("[^a-zA-Z0-9 -]");
             var contents = "";
-            string[] words;
+            List<string> words = new List<string>();
             foreach (var file in files)
             {
                 contents = File.ReadAllText(file);
-                words = contents.Split();
+                words = contents.Split().ToList();
                 foreach (var word in words)
                 {
                     if (word == "" || word == " ")
                         continue;
-                    
-                    wordDictionary.AddOrUpdate(rgx.Replace(word, ""), 0, 
+
+                    wordDictionary.AddOrUpdate(rgx.Replace(word.ToLower(), ""), 0,
                         (key, oldValue) => oldValue + 1);
                 }
             }
 
             Console.WriteLine(wordDictionary.Count());
-            
         }
-
     }
 }

@@ -23,8 +23,7 @@ namespace BooksAnalysis
             
             var numFilesInPath = Directory.GetFiles(fullPath).Length;
             var files = Directory.EnumerateFiles(fullPath, "*.txt").ToList();
-            var tasks = new List<Task>();
-            List<Thread> threads = new List<Thread>();
+            var stack = new ConcurrentStack<Thread>();
 
 
             //100
@@ -39,23 +38,25 @@ namespace BooksAnalysis
             for (var i = 0; i < threadsNum-1; i++)
             {
                 var partialFilesList = files.GetRange(intervalos[i], (numFilesInPath/threadsNum)-1);
-                new Thread(() => ReadAllFiles(partialFilesList, wordDictionary)).Start(); 
+                stack.Push(new Thread(() => ReadAllFiles(partialFilesList, wordDictionary))); 
             }
             
-            // foreach(Thread thread in threads)
-            // {
-            //     thread.Start();
-            //     thread.Join();
-            // }
+            foreach(Thread thread in stack)
+            {
+                thread.Start();
+                thread.Join();
+            }
             
-            // while (tasks.Any(t => !t.IsCompleted))
-            // {
-            //     orderedDictionary = wordDictionary.OrderByDescending(pair => pair.Value)
-            //         .ToDictionary(pair => pair.Key, pair => pair.Value);
-            //     var filePath = fullPath + @"\word-analyses.txt";
-            //     var ordered = orderedDictionary.ToList().ToString();
-            //     File.WriteAllText(filePath, ordered);
-            // }
+            while (stack.Any(t => !t.IsAlive))
+            {
+                orderedDictionary = wordDictionary.OrderByDescending(pair => pair.Value)
+                    .ToDictionary(pair => pair.Key, pair => pair.Value);
+                var filePath = folderPath + @"\word-analysis.txt";
+                File.WriteAllText(filePath, "Total files: " + numFilesInPath);
+                File.WriteAllText(filePath, "Total words: " + orderedDictionary.Count());
+                File.WriteAllLines(filePath,
+                    orderedDictionary.Select(x => "[" + x.Key + " " + x.Value + "]"));
+            }
             
         }
 
@@ -73,7 +74,7 @@ namespace BooksAnalysis
                     if (word == "" || word == " ")
                         continue;
 
-                    wordDictionary.AddOrUpdate(rgx.Replace(word.ToLower(), ""), 0,
+                    wordDictionary.AddOrUpdate(rgx.Replace(word.ToLower(), ""), 1,
                         (key, oldValue) => oldValue + 1);
                 }
             }

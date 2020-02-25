@@ -26,8 +26,8 @@ namespace BooksAnalysis
 
 
             //100
-            var totalFiles = files.GetRange(1, 40);
-            numFilesInPath = totalFiles.Count();
+            //var totalFiles = files.GetRange(1, 40);
+            //numFilesInPath = totalFiles.Count();
 
             List<int> intervalos = new List<int>();
             
@@ -48,11 +48,12 @@ namespace BooksAnalysis
             
             while (stack.Any(t => !t.IsAlive))
             {
-                orderedDictionary = wordDictionary.OrderByDescending(pair => pair.Value).Take(10)
+                orderedDictionary = wordDictionary.OrderByDescending(pair => pair.Value).Take(20)
                     .ToDictionary(pair => pair.Key, pair => pair.Value);
                 var filePath = folderPath + @"\word-analysis.txt";
-                File.WriteAllText(filePath, "Total files: " + numFilesInPath);
-                File.WriteAllText(filePath, "Total words: " + orderedDictionary.Count());
+                var fileSummaryPath = folderPath + @"\word-summary-analysis.txt";
+                File.WriteAllText(fileSummaryPath, "Total files: " + numFilesInPath + "\n" +
+                                                   "Total words: " + wordDictionary.Count());
                 File.WriteAllLines(filePath,
                     orderedDictionary.Select(x => "[" + x.Key + " " + x.Value + "]"));
                 break;

@@ -72,7 +72,7 @@ namespace BooksAnalysis
                 words = contents.Split().ToList();
                 foreach (var word in words)
                 {
-                    if (word == "" || word == " ")
+                    if (word == "" || word == " " || StopWord.isStopWord(word.ToLower()))
                         continue;
 
                     wordDictionary.AddOrUpdate(rgx.Replace(word.ToLower(), ""), 1,

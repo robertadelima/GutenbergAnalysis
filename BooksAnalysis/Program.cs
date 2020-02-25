@@ -1,5 +1,4 @@
 ﻿using System;
-using System.CodeDom;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -15,8 +14,7 @@ namespace BooksAnalysis
         {
             var wordDictionary = new ConcurrentDictionary<string, long>();
             var orderedDictionary = new Dictionary<string, long>();
-            var top10words = new Dictionary<string, long>();
-            var threadsNum = 8;
+            var threadsNum = 16;
             var folderPath = Path.GetDirectoryName(Path.GetDirectoryName(System.IO.Directory.GetCurrentDirectory()));
             var fullPath = folderPath + @"\10k-livros";
             
@@ -50,12 +48,12 @@ namespace BooksAnalysis
             {
                 orderedDictionary = wordDictionary.OrderByDescending(pair => pair.Value).Take(20)
                     .ToDictionary(pair => pair.Key, pair => pair.Value);
-                var filePath = folderPath + @"\word-analysis.txt";
+                var filePath = folderPath + @"\word-analysis.csv";
                 var fileSummaryPath = folderPath + @"\word-summary-analysis.txt";
                 File.WriteAllText(fileSummaryPath, "Total files: " + numFilesInPath + "\n" +
                                                    "Total words: " + wordDictionary.Count());
                 File.WriteAllLines(filePath,
-                    orderedDictionary.Select(x => "[" + x.Key + " " + x.Value + "]"));
+                    orderedDictionary.Select(x =>  x.Value + ", " + x.Key));
                 break;
             }
             
@@ -72,14 +70,15 @@ namespace BooksAnalysis
                 words = contents.Split().ToList();
                 foreach (var word in words)
                 {
-                    if (word == "" || word == " " || StopWord.isStopWord(word.ToLower()))
+                    if (word == "" || word == " " || word == "")
+                    //if (word == "" || word == " " || word == "" || StopWord.isStopWord(word.ToLower()))
                         continue;
 
                     wordDictionary.AddOrUpdate(rgx.Replace(word.ToLower(), ""), 1,
                         (key, oldValue) => oldValue + 1);
                 }
             }
-
+            
             Console.WriteLine(wordDictionary.Count());
         }
     }

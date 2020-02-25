@@ -2,12 +2,10 @@
 using System.CodeDom;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace BooksAnalysis
 {
@@ -17,6 +15,7 @@ namespace BooksAnalysis
         {
             var wordDictionary = new ConcurrentDictionary<string, long>();
             var orderedDictionary = new Dictionary<string, long>();
+            var top10words = new Dictionary<string, long>();
             var threadsNum = 8;
             var folderPath = Path.GetDirectoryName(Path.GetDirectoryName(System.IO.Directory.GetCurrentDirectory()));
             var fullPath = folderPath + @"\10k-livros";
@@ -49,13 +48,14 @@ namespace BooksAnalysis
             
             while (stack.Any(t => !t.IsAlive))
             {
-                orderedDictionary = wordDictionary.OrderByDescending(pair => pair.Value)
+                orderedDictionary = wordDictionary.OrderByDescending(pair => pair.Value).Take(10)
                     .ToDictionary(pair => pair.Key, pair => pair.Value);
                 var filePath = folderPath + @"\word-analysis.txt";
                 File.WriteAllText(filePath, "Total files: " + numFilesInPath);
                 File.WriteAllText(filePath, "Total words: " + orderedDictionary.Count());
                 File.WriteAllLines(filePath,
                     orderedDictionary.Select(x => "[" + x.Key + " " + x.Value + "]"));
+                break;
             }
             
         }

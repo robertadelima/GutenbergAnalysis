@@ -2,7 +2,7 @@
 
 namespace BooksAnalysis
 {
-    public class StopWord
+    public class StopWordsFilter
     {
         static Dictionary<string, bool> _stops = new Dictionary<string, bool>
         {

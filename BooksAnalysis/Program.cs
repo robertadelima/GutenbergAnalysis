@@ -10,11 +10,11 @@ namespace BooksAnalysis
 {
     internal class Program
     {
+        private static ConcurrentDictionary<string, long> wordDictionary = new ConcurrentDictionary<string, long>();
         public static void Main(string[] args)
         {
-            var wordDictionary = new ConcurrentDictionary<string, long>();
             var orderedDictionary = new Dictionary<string, long>();
-            var threadsNum = 16;
+            var threadsNum = 8;
             var folderPath = Path.GetDirectoryName(Path.GetDirectoryName(System.IO.Directory.GetCurrentDirectory()));
             var fullPath = folderPath + @"\10k-livros";
             
@@ -35,7 +35,7 @@ namespace BooksAnalysis
             for (var i = 0; i < threadsNum-1; i++)
             {
                 var partialFilesList = files.GetRange(intervalos[i], (numFilesInPath/threadsNum)-1);
-                stack.Push(new Thread(() => ReadAllFiles(partialFilesList, wordDictionary))); 
+                stack.Push(new Thread(() => ReadAllFiles(partialFilesList))); 
             }
             
             foreach(Thread thread in stack)
@@ -59,24 +59,46 @@ namespace BooksAnalysis
             
         }
 
-        public static void ReadAllFiles(List<string> files, ConcurrentDictionary<string, Int64> wordDictionary)
+        public static void ReadAllFiles(List<string> files)
         {
-            Regex rgx = new Regex("[^a-zA-Z0-9 -]");
-            var contents = "";
-            List<string> words = new List<string>();
+            var rgx = new Regex("[^a-zA-Z0-9 -]");
+            var isRealBookText = false;
+            bool textStartFound;
+            bool textEndFound;
+            var lines = new List<string>();
+            var words = new List<string>();
             foreach (var file in files)
             {
-                contents = File.ReadAllText(file);
-                words = contents.Split().ToList();
-                foreach (var word in words)
+                textStartFound = false;
+                textEndFound = false;
+                lines = File.ReadAllLines(file).ToList();
+                foreach (var line in lines)
                 {
-                    if (word == "" || word == " " || word == "")
-                    //if (word == "" || word == " " || word == "" || StopWord.isStopWord(word.ToLower()))
+                    if (textStartFound == false)
+                    {
+                        textStartFound = ProjectDisclaimerFilter.isBeginningOfDisclaimer(line);
                         continue;
+                    }
 
-                    wordDictionary.AddOrUpdate(rgx.Replace(word.ToLower(), ""), 1,
-                        (key, oldValue) => oldValue + 1);
+                    if (textStartFound && textEndFound == false)
+                    {
+                        textEndFound = ProjectDisclaimerFilter.isEndingOfDisclaimer(line);
+                        if (textEndFound)
+                            break;
+                        words = line.Split().ToList();
+                        foreach (var word in words)
+                        {
+                            rgx.Replace(word.ToLower(), "");
+                            if (word.Trim() == "" || StopWordsFilter.isStopWord(word.ToLower()))
+                                continue;
+
+                            wordDictionary.AddOrUpdate(word.ToLower(), 1,
+                                (key, oldValue) => oldValue + 1);
+                        }
+                    }
+                    
                 }
+               
             }
             
             Console.WriteLine(wordDictionary.Count());

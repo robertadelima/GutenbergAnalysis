@@ -38,7 +38,7 @@ namespace BooksAnalysis
                 stack.Push(new Thread(() => ReadAllFiles(partialFilesList))); 
             }
             
-            foreach(Thread thread in stack)
+            foreach(var thread in stack)
             {
                 thread.Start();
                 thread.Join();
